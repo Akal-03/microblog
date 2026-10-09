@@ -1,0 +1,844 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>MicroBlog</title>
+
+<style>
+*{
+box-sizing:border-box;
+margin:0;
+padding:0
+}
+
+body{
+font-family:Arial,sans-serif;
+background:#f2f4f8;
+color:#333
+}
+
+.auth{
+min-height:100vh;
+display:flex;
+justify-content:center;
+align-items:center;
+background:#e8f0fe
+}
+
+.box{
+width:350px;
+background:white;
+padding:30px;
+border-radius:14px;
+box-shadow:0 5px 20px #cfd5df
+}
+
+.box h1{
+text-align:center;
+color:#1877f2;
+margin-bottom:25px
+}
+
+.box h2{
+text-align:center;
+margin-bottom:15px
+}
+
+input,textarea{
+width:100%;
+padding:11px;
+margin:6px 0;
+border:1px solid #ccc;
+border-radius:7px;
+outline:none
+}
+
+textarea{
+height:90px;
+resize:none
+}
+
+button{
+padding:9px 14px;
+border:0;
+border-radius:6px;
+background:#1877f2;
+color:white;
+cursor:pointer
+}
+
+.box button{
+width:100%;
+margin-top:8px
+}
+
+.switch{
+color:#1877f2;
+text-align:center;
+margin-top:15px;
+cursor:pointer;
+font-size:14px
+}
+
+#msg{
+text-align:center;
+margin-top:10px;
+font-size:14px
+}
+
+#blog{
+display:none;
+min-height:100vh
+}
+
+header{
+background:white;
+padding:15px 7%;
+display:flex;
+justify-content:space-between;
+align-items:center;
+box-shadow:0 2px 8px #ddd
+}
+
+header h2{
+color:#1877f2
+}
+
+header div{
+display:flex;
+align-items:center;
+gap:12px
+}
+
+.logout{
+background:#f44336
+}
+
+.card{
+background:white;
+padding:20px;
+border-radius:12px;
+margin:15px auto;
+max-width:700px;
+box-shadow:0 3px 12px #ddd
+}
+
+.card h2,.card h3{
+margin-bottom:10px
+}
+
+.person{
+display:flex;
+justify-content:space-between;
+align-items:center;
+padding:12px 5px;
+border-bottom:1px solid #eee
+}
+
+.post{
+border:1px solid #ddd;
+padding:15px;
+margin-top:12px;
+border-radius:10px
+}
+
+.post-header{
+display:flex;
+justify-content:space-between;
+align-items:center
+}
+
+.post-user{
+color:#1877f2;
+font-weight:bold
+}
+
+.post-date{
+font-size:12px;
+color:#777
+}
+
+.post-text{
+margin-top:10px;
+line-height:1.5
+}
+
+.post img{
+width:100%;
+max-height:350px;
+object-fit:cover;
+margin-top:10px;
+border-radius:8px
+}
+
+.actions{
+display:flex;
+gap:8px;
+margin-top:12px;
+flex-wrap:wrap
+}
+
+.liked{
+margin-top:8px;
+font-size:14px;
+color:#555
+}
+
+@media(max-width:600px){
+
+header{
+padding:15px
+}
+
+#current{
+display:none
+}
+
+.card{
+margin:10px;
+padding:15px
+}
+
+.box{
+width:90%
+}
+
+}
+</style>
+</head>
+
+<body>
+
+<div class="auth" id="auth">
+
+<div class="box">
+
+<h1> MicroBlog</h1>
+
+<div id="login">
+
+<h2>Login</h2>
+
+<input id="lu" placeholder="Username">
+<input id="lp" type="password" placeholder="Password">
+
+<button onclick="loginUser()">Login</button>
+
+<p class="switch" onclick="registerPage()">
+Don't have an account? Register
+</p>
+
+</div>
+
+<div id="register" style="display:none">
+
+<h2>Register</h2>
+
+<input id="rn" placeholder="Full Name">
+<input id="ru" placeholder="Username">
+<input id="rp" type="password" placeholder="Password">
+<input id="rc" type="password" placeholder="Confirm Password">
+
+<button onclick="registerUser()">Register</button>
+
+<p class="switch" onclick="loginPage()">
+Already have an account? Login
+</p>
+
+</div>
+
+<p id="msg"></p>
+
+</div>
+
+</div>
+
+<div id="blog">
+
+<header>
+
+<h2> MicroBlog</h2>
+
+<div>
+
+<span id="current"></span>
+
+<button class="logout" onclick="logout()">
+Logout
+</button>
+
+</div>
+
+</header>
+
+<div class="card">
+
+<h2>
+Welcome, <span id="name"></span> 👋
+</h2>
+
+<p>
+Followers:
+<b id="followers">0</b>
+
+&nbsp;&nbsp;&nbsp;
+
+Following:
+<b id="following">0</b>
+</p>
+
+</div>
+
+<div class="card">
+
+<h3>✍️ Create Post</h3>
+
+<textarea id="text" placeholder="What's happening?"></textarea>
+
+<input type="file" id="image" accept="image/*">
+
+<button onclick="createPost()">Post</button>
+
+</div>
+
+<div class="card">
+
+<h3>👥 People</h3>
+
+<div id="people"></div>
+
+</div>
+
+<div class="card">
+
+<h2>📰 Your Feed</h2>
+
+<div id="feed"></div>
+
+</div>
+
+</div>
+
+<script>
+
+let users=JSON.parse(localStorage.getItem("users"));
+
+if(!users){
+users={
+demo:{
+name:"Demo User",
+password:"1234",
+followers:[],
+following:[]
+}
+};
+localStorage.setItem("users",JSON.stringify(users));
+}
+
+let posts=JSON.parse(localStorage.getItem("posts"))||[];
+
+let current=localStorage.getItem("current");
+
+function saveUsers(){
+localStorage.setItem("users",JSON.stringify(users));
+}
+
+function savePosts(){
+localStorage.setItem("posts",JSON.stringify(posts));
+}
+
+function registerPage(){
+
+document.getElementById("login").style.display="none";
+
+document.getElementById("register").style.display="block";
+
+document.getElementById("msg").textContent="";
+
+}
+
+function loginPage(){
+
+document.getElementById("register").style.display="none";
+
+document.getElementById("login").style.display="block";
+
+document.getElementById("msg").textContent="";
+
+}
+
+function registerUser(){
+
+let n=document.getElementById("rn").value.trim();
+
+let u=document.getElementById("ru").value.trim().toLowerCase();
+
+let p=document.getElementById("rp").value;
+
+let c=document.getElementById("rc").value;
+
+let message=document.getElementById("msg");
+
+if(n===""||u===""||p===""||c===""){
+
+message.style.color="red";
+
+message.textContent="Please fill all fields";
+
+return;
+
+}
+
+if(p!==c){
+
+message.style.color="red";
+
+message.textContent="Passwords do not match";
+
+return;
+
+}
+
+if(users[u]){
+
+message.style.color="red";
+
+message.textContent="Username already exists";
+
+return;
+
+}
+
+users[u]={
+
+name:n,
+
+password:p,
+
+followers:[],
+
+following:[]
+
+};
+
+saveUsers();
+
+document.getElementById("rn").value="";
+document.getElementById("ru").value="";
+document.getElementById("rp").value="";
+document.getElementById("rc").value="";
+
+message.style.color="green";
+
+message.textContent="Registration successful! Please login.";
+
+setTimeout(function(){
+
+loginPage();
+
+document.getElementById("lu").value=u;
+
+document.getElementById("lp").value="";
+
+},1000);
+
+}
+
+function loginUser(){
+
+let u=document.getElementById("lu").value.trim().toLowerCase();
+
+let p=document.getElementById("lp").value;
+
+let message=document.getElementById("msg");
+
+if(u===""||p===""){
+
+message.style.color="red";
+
+message.textContent="Enter username and password";
+
+return;
+
+}
+
+if(!users[u]){
+
+message.style.color="red";
+
+message.textContent="User not found. Please register.";
+
+return;
+
+}
+
+if(users[u].password!==p){
+
+message.style.color="red";
+
+message.textContent="Wrong password";
+
+return;
+
+}
+
+current=u;
+
+localStorage.setItem("current",current);
+
+openBlog();
+
+}
+
+function openBlog(){
+
+document.getElementById("auth").style.display="none";
+
+document.getElementById("blog").style.display="block";
+
+document.getElementById("name").textContent=users[current].name;
+
+document.getElementById("current").textContent=
+"👤 "+users[current].name;
+
+updateCounts();
+
+showPeople();
+
+showFeed();
+
+}
+
+function logout(){
+
+current=null;
+
+localStorage.removeItem("current");
+
+document.getElementById("blog").style.display="none";
+
+document.getElementById("auth").style.display="flex";
+
+loginPage();
+
+}
+
+function updateCounts(){
+
+document.getElementById("followers").textContent=
+users[current].followers.length;
+
+document.getElementById("following").textContent=
+users[current].following.length;
+
+}
+
+function follow(u){
+
+if(!users[current].following.includes(u)){
+
+users[current].following.push(u);
+
+users[u].followers.push(current);
+
+saveUsers();
+
+updateCounts();
+
+showPeople();
+
+}
+
+}
+
+function unfollow(u){
+
+users[current].following=
+users[current].following.filter(x=>x!==u);
+
+users[u].followers=
+users[u].followers.filter(x=>x!==current);
+
+saveUsers();
+
+updateCounts();
+
+showPeople();
+
+}
+
+function showPeople(){
+
+let people=document.getElementById("people");
+
+people.innerHTML="";
+
+Object.keys(users).forEach(function(u){
+
+if(u===current)return;
+
+let following=
+users[current].following.includes(u);
+
+people.innerHTML+=`
+
+<div class="person">
+
+<div>
+<b>${users[u].name}</b><br>
+@${u}
+</div>
+
+<button onclick="${
+following
+?`unfollow('${u}')`
+:`follow('${u}')`
+}">
+${following?"Unfollow":"Follow"}
+</button>
+
+</div>
+
+`;
+
+});
+
+}
+
+function createPost(){
+
+let t=document.getElementById("text").value.trim();
+
+let file=document.getElementById("image").files[0];
+
+if(!t&&!file){
+
+alert("Write something or select image");
+
+return;
+
+}
+
+if(file){
+
+let reader=new FileReader();
+
+reader.onload=function(e){
+
+addPost(t,e.target.result);
+
+};
+
+reader.readAsDataURL(file);
+
+}else{
+
+addPost(t,"");
+
+}
+
+}
+
+function addPost(t,img){
+
+posts.unshift({
+
+id:Date.now(),
+
+username:current,
+
+text:t,
+
+image:img,
+
+likes:[],
+
+reshares:0,
+
+date:new Date().toLocaleString()
+
+});
+
+savePosts();
+
+document.getElementById("text").value="";
+
+document.getElementById("image").value="";
+
+showFeed();
+
+}
+
+function likePost(id){
+
+let post=posts.find(x=>x.id===id);
+
+if(post.likes.includes(current)){
+
+post.likes=
+post.likes.filter(x=>x!==current);
+
+}else{
+
+post.likes.push(current);
+
+}
+
+savePosts();
+
+showFeed();
+
+}
+
+function resharePost(id){
+
+let post=posts.find(x=>x.id===id);
+
+if(!post)return;
+
+post.reshares++;
+
+posts.unshift({
+
+id:Date.now(),
+
+username:current,
+
+text:post.text,
+
+image:post.image,
+
+likes:[],
+
+reshares:0,
+
+date:new Date().toLocaleString(),
+
+reshared:true,
+
+originalUser:post.username
+
+});
+
+savePosts();
+
+showFeed();
+
+}
+
+function sharePost(id){
+
+let post=posts.find(x=>x.id===id);
+
+let shareText=
+"Post by @"+post.username+": "+post.text;
+
+if(navigator.share){
+
+navigator.share({
+
+title:"MicroBlog",
+
+text:shareText
+
+});
+
+}else{
+
+navigator.clipboard.writeText(shareText);
+
+alert("Copied!");
+
+}
+
+}
+
+function showFeed(){
+
+let feed=document.getElementById("feed");
+
+feed.innerHTML="";
+
+if(posts.length===0){
+
+feed.innerHTML="<p>No posts yet.</p>";
+
+return;
+
+}
+
+posts.forEach(function(post){
+
+let user=users[post.username];
+
+let liked=post.likes.includes(current);
+
+let names=post.likes.map(function(x){
+
+return users[x]?users[x].name:x;
+
+}).join(", ");
+
+feed.innerHTML+=`
+
+<div class="post">
+
+<div class="post-header">
+
+<span class="post-user">
+${user?user.name:post.username}
+</span>
+
+<span class="post-date">
+${post.date}
+</span>
+
+</div>
+
+<p class="post-text">
+${post.text}
+</p>
+
+${post.image?
+`<img src="${post.image}">`
+:""}
+
+<div class="actions">
+
+<button onclick="likePost(${post.id})">
+${liked?"❤️":"🤍"} ${post.likes.length}
+</button>
+
+<button onclick="resharePost(${post.id})">
+🔁 Reshare ${post.reshares}
+</button>
+
+<button onclick="sharePost(${post.id})">
+📤 Share
+</button>
+
+</div>
+
+${names?
+`<div class="liked">
+❤️ Liked by ${names}
+</div>`
+:""}
+
+</div>
+
+`;
+
+});
+
+}
+
+if(current&&users[current]){
+
+openBlog();
+
+}
+
+</script>
+
+</body>
+</html>
